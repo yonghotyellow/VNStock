@@ -49,7 +49,7 @@ def get_company_info(companies_df, file_path):
                 json.dump(info, f, ensure_ascii=False, indent=4)
                 if idx < len(companies_df['symbol']) - 1:
                     f.write(",\n")
-            print(f"Successfully fetched data for {symbol}")
+            print(f"Company info for {symbol} successfully written")
             time.sleep(3)
         except Exception as e:
             print(f"Error fetching data for {symbol}: {e}")
@@ -63,17 +63,19 @@ def get_officers(companies_df, file_path):
         company = Company(symbol=symbol)
         try:
             officers = company.officers()
-            if not officers:
-                print(f"No officers data found for {symbol}")
-                continue
-            for officer in officers:
-                officer['symbol'] = symbol
+            # if not officers:
+            #     print(f"No officers data found for {symbol}")
+            #     continue
+            
             officers_df = pd.DataFrame(officers)
+            officers_df['symbol'] = symbol
+            columns = ['symbol'] + [col for col in officers_df.columns if col != 'symbol']
+            officers_df = officers_df[columns]
             if not os.path.exists(file_path):
                 officers_df.to_csv(file_path, index=False, encoding="utf-8")
             else:
                 officers_df.to_csv(file_path, mode="a", header=False, index=False, encoding="utf-8")
-            print(f"Officers data for {symbol} successfully written to {file_path}")
+            print(f"Officers data for {symbol} successfully written")
             time.sleep(3)
         except Exception as e:
             print(f"Error fetching officers data for {symbol}: {e}")
