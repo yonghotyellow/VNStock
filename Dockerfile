@@ -7,8 +7,9 @@ RUN pip install vnstock pandas python-dotenv
 WORKDIR /app
 
 # Copy the application files
-COPY data_crawler.py .
+COPY src/data_utils.py .
+COPY src/main.py .
 COPY .env .
 
 # Run the script
-CMD ["python", "data_crawler.py"]
+ENTRYPOINT ["python", "main.py"]

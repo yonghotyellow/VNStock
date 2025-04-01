@@ -2,6 +2,7 @@ import os
 import json
 from dotenv import load_dotenv
 from vnstock import Company
+import pandas as pd
 
 # Load environment variables from .env file
 load_dotenv()
@@ -15,16 +16,40 @@ os.makedirs(DATA_DIR, exist_ok=True)
 # Print the path to the company info file
 print(f"Company info file path: {COMPANY_INFO_FILE}")
 # Read the company info file and print the first 10 companies
-if os.path.exists(COMPANY_INFO_FILE):
-    with open(COMPANY_INFO_FILE, "r", encoding="utf-8") as f:
-        company_info_list = json.load(f)
-        for company in company_info_list[:10]:
-            print(company)
-else:
-    print(f"Company info file {COMPANY_INFO_FILE} does not exist.")
+# if os.path.exists(COMPANY_INFO_FILE):
+#     with open(COMPANY_INFO_FILE, "r", encoding="utf-8") as f:
+#         company_info_list = json.load(f)
+#         for company in company_info_list[:10]:
+#             print(company)
+# else:
+#     print(f"Company info file {COMPANY_INFO_FILE} does not exist.")
+
+def get_officers(symbol):
+    company = Company(symbol=symbol)
+    try:
+        # Fetch officers data
+        officers = company.officers() 
+        # print(officers) # Assuming this method exists in the vnstock library
+        officers_info = []
+        # print(officers.get('officer_name'))
+        print(officers)
+
+        officers_df = pd.DataFrame(officers)
+        print(officers_df.head())  # Print the first few rows of the DataFrame
+        # for officer in officers[1:]: # Print the first few rows of the DataFrame
+        #     print(officer.get('officer_name')[0])
+
+        # print(officers_info)  # Print the first few rows of the DataFrame
+    except Exception as e:
+        print(f"Error fetching officers data for {symbol}: {e}")
+
+# Example usage
+test_symbol = "FPT"  # Replace with a valid symbol
+get_officers(test_symbol)
 
 # Test symbol
 # symbol = 'YBM'
+
 # company_info_list = []
 
 # # Fetch company data

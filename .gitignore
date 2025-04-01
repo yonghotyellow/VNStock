@@ -2,3 +2,5 @@
 *.json
 .env
 data/
+src/__pycache__/
+src/test.py
