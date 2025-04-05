@@ -1,0 +1,3 @@
+pandas
+vnstock==3.2.3
+python-dotenv
