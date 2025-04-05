@@ -257,3 +257,108 @@ def get_income_statement(companies_df, file_path, err_file_path, quarter=True, i
             error_message = f"Error fetching income statement for {symbol}: {e}"
             log_error(err_file_path, error_message)
             print(error_message)
+
+def get_balance_sheet(companies_df, file_path, err_file_path, quarter=True, is_test=True):
+    """Fetch and save balance sheet data."""
+    print('Start collecting balance sheet data')
+    
+    # Determine the period based on the quarter parameter
+    period = 'quarter' if quarter else 'year'
+    
+    # Limit to the first 10 companies if in test mode
+    if is_test:
+        companies_df = companies_df.head(10)
+    
+    for symbol in companies_df['symbol']:
+        try:
+            # Fetch balance sheet data
+            stock = Vnstock().stock(symbol=symbol, source='VCI')
+            balance_sheet = stock.finance.balance_sheet(period=period, lang='vi')
+            
+            # Convert to DataFrame
+            balance_sheet_df = pd.DataFrame(balance_sheet)
+            
+            # Save to CSV
+            if not os.path.exists(file_path):
+                balance_sheet_df.to_csv(file_path, index=False, encoding="utf-8")
+            else:
+                balance_sheet_df.to_csv(file_path, mode="a", header=False, index=False, encoding="utf-8")
+            
+            print(f"Balance sheet for {symbol} successfully written to {file_path}")
+            
+            # Sleep for 3 seconds before fetching the next company
+            time.sleep(3)
+        except Exception as e:
+            error_message = f"Error fetching balance sheet for {symbol}: {e}"
+            log_error(err_file_path, error_message)
+            print(error_message)
+
+def get_cash_flow(companies_df, file_path, err_file_path, quarter=True, is_test=True):
+    """Fetch and save cash flow data."""
+    print('Start collecting cash flow data')
+    
+    # Determine the period based on the quarter parameter
+    period = 'quarter' if quarter else 'year'
+    
+    # Limit to the first 10 companies if in test mode
+    if is_test:
+        companies_df = companies_df.head(10)
+    
+    for symbol in companies_df['symbol']:
+        try:
+            # Fetch cash flow data
+            stock = Vnstock().stock(symbol=symbol, source='VCI')
+            cash_flow = stock.finance.cash_flow(period=period, lang='vi')
+            
+            # Convert to DataFrame
+            cash_flow_df = pd.DataFrame(cash_flow)
+            
+            # Save to CSV
+            if not os.path.exists(file_path):
+                cash_flow_df.to_csv(file_path, index=False, encoding="utf-8")
+            else:
+                cash_flow_df.to_csv(file_path, mode="a", header=False, index=False, encoding="utf-8")
+            
+            print(f"Cash flow for {symbol} successfully written to {file_path}")
+            
+            # Sleep for 3 seconds before fetching the next company
+            time.sleep(3)
+        except Exception as e:
+            error_message = f"Error fetching cash flow for {symbol}: {e}"
+            log_error(err_file_path, error_message)
+            print(error_message)
+
+def get_ratio(companies_df, file_path, err_file_path, quarter=True, is_test=True):
+    """Fetch and save financial ratio data."""
+    print('Start collecting financial ratio data')
+    
+    # Determine the period based on the quarter parameter
+    period = 'quarter' if quarter else 'year'
+    
+    # Limit to the first 10 companies if in test mode
+    if is_test:
+        companies_df = companies_df.head(10)
+    
+    for symbol in companies_df['symbol']:
+        try:
+            # Fetch financial ratio data
+            stock = Vnstock().stock(symbol=symbol, source='VCI')
+            ratio = stock.finance.ratio(period=period, lang='vi')
+            
+            # Convert to DataFrame
+            ratio_df = pd.DataFrame(ratio)
+            
+            # Save to CSV
+            if not os.path.exists(file_path):
+                ratio_df.to_csv(file_path, index=False, encoding="utf-8")
+            else:
+                ratio_df.to_csv(file_path, mode="a", header=False, index=False, encoding="utf-8")
+            
+            print(f"Financial ratio for {symbol} successfully written to {file_path}")
+            
+            # Sleep for 3 seconds before fetching the next company
+            time.sleep(3)
+        except Exception as e:
+            error_message = f"Error fetching financial ratio for {symbol}: {e}"
+            log_error(err_file_path, error_message)
+            print(error_message)

@@ -8,7 +8,10 @@ from data_utils import (
     get_shareholders,
     get_dividends,
     get_stock_quote_history,
-    get_income_statement  # Import the new method
+    get_income_statement,
+    get_balance_sheet,
+    get_cash_flow,
+    get_ratio
 )
 from dotenv import load_dotenv
 load_dotenv()
@@ -23,7 +26,10 @@ COMPANY_OFFICERS_FILE = os.getenv("COMPANY_OFFICER_FILE")
 COMPANY_SHAREHOLDERS_FILE = os.getenv("COMPANY_SHAREHOLDER_FILE")
 COMPANY_DIVIDENDS_FILE = os.getenv("COMPANY_DIVIDENDS_FILE")
 COMPANY_STOCK_QUOTE_FILE = os.getenv("COMPANY_STOCK_QUOTE_FILE")
-COMPANY_INCOME_STATEMENT_FILE = os.getenv("COMPANY_INCOME_STATEMENT_FILE")  # New variable
+COMPANY_INCOME_STATEMENT_FILE = os.getenv("COMPANY_INCOME_STATEMENT_FILE")
+COMPANY_BALANCE_SHEET_FILE = os.getenv("COMPANY_BALANCE_SHEET_FILE")
+COMPANY_CASH_FLOW_FILE = os.getenv("COMPANY_CASH_FLOW_FILE")
+COMPANY_RATIO_FILE = os.getenv("COMPANY_RATIO_FILE")
 
 os.makedirs(DATA_DIR, exist_ok=True)
 os.makedirs(LOG_DIR, exist_ok=True)
@@ -36,22 +42,31 @@ def main(is_test):
         companies_df = pd.read_csv(COMPANIES_FILE, encoding='utf-8')
 
     # Fetch and save company info
-    get_company_info(companies_df, COMPANY_INFO_FILE, ERROR_LOG_FILE, is_test)
+    # get_company_info(companies_df, COMPANY_INFO_FILE, ERROR_LOG_FILE, is_test)
 
-    # Fetch and save officers data
-    get_officers(companies_df, COMPANY_OFFICERS_FILE, ERROR_LOG_FILE, is_test)
+    # # Fetch and save officers data
+    # get_officers(companies_df, COMPANY_OFFICERS_FILE, ERROR_LOG_FILE, is_test)
 
-    # Fetch and save shareholders data
-    get_shareholders(companies_df, COMPANY_SHAREHOLDERS_FILE, ERROR_LOG_FILE, is_test)
+    # # Fetch and save shareholders data
+    # get_shareholders(companies_df, COMPANY_SHAREHOLDERS_FILE, ERROR_LOG_FILE, is_test)
 
-    # Fetch and save dividends data
-    get_dividends(companies_df, COMPANY_DIVIDENDS_FILE, ERROR_LOG_FILE, is_test)
+    # # Fetch and save dividends data
+    # get_dividends(companies_df, COMPANY_DIVIDENDS_FILE, ERROR_LOG_FILE, is_test)
 
-    # Fetch and save stock quote history
-    get_stock_quote_history(companies_df, COMPANY_STOCK_QUOTE_FILE, ERROR_LOG_FILE, start_date="2020-01-01", is_test=is_test)
+    # # Fetch and save stock quote history
+    # get_stock_quote_history(companies_df, COMPANY_STOCK_QUOTE_FILE, ERROR_LOG_FILE, start_date="2020-01-01", is_test=is_test)
 
-    # Fetch and save income statement data
-    get_income_statement(companies_df, COMPANY_INCOME_STATEMENT_FILE, ERROR_LOG_FILE, quarter=True, is_test=is_test)
+    # # Fetch and save income statement data
+    # get_income_statement(companies_df, COMPANY_INCOME_STATEMENT_FILE, ERROR_LOG_FILE, quarter=True, is_test=is_test)
+
+    # Fetch and save balance sheet data
+    get_balance_sheet(companies_df, COMPANY_BALANCE_SHEET_FILE, ERROR_LOG_FILE, quarter=True, is_test=is_test)
+
+    # Fetch and save cash flow data
+    get_cash_flow(companies_df, COMPANY_CASH_FLOW_FILE, ERROR_LOG_FILE, quarter=True, is_test=is_test)
+
+    # Fetch and save ratio data
+    get_ratio(companies_df, COMPANY_RATIO_FILE, ERROR_LOG_FILE, quarter=True, is_test=is_test)
 
 if __name__ == "__main__":
     # Set up argument parser
