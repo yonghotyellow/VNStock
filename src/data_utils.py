@@ -9,23 +9,48 @@ from datetime import datetime
 # Load environment variables from .env file
 load_dotenv()
 
-def get_companies(file_path):
-    """Fetch and save the list of companies."""
-    stock = Vnstock().stock(symbol='ACB', source='VCI')
-    companies = pd.DataFrame(stock.listing.symbols_by_exchange())
-    companies_df = companies[(companies['exchange'] == 'HSX') & (companies['type'] == 'STOCK')]
-    companies_df = companies_df.drop(columns=['organ_short_name', 'organ_name'], axis=1)
-    companies_df.to_csv(file_path, index=False, encoding='utf-8')
-    print(f"Successfully saved companies.csv file to {file_path}")
-    return companies_df
+def log_error(err_file_path, message):
+    """Log errors with timestamp to the specified error file."""
+    with open(err_file_path, "a", encoding="utf-8") as err_file:
+        err_file.write(f"{datetime.now()} - {message}\n")
 
-def get_company_info(companies_df, file_path, is_test=True):
+def get_companies(file_path, err_file_path):
+    """Fetch and save the list of companies."""
+    try:
+        stock = Vnstock().stock(symbol='ACB', source='VCI')
+        companies = pd.DataFrame(stock.listing.symbols_by_exchange())
+        companies_df = companies[(companies['exchange'] == 'HSX') & (companies['type'] == 'STOCK')]
+        companies_df = companies_df.drop(columns=['organ_short_name', 'organ_name'], axis=1)
+        companies_df.to_csv(file_path, index=False, encoding='utf-8')
+        print(f"Successfully saved companies.csv file to {file_path}")
+        return companies_df
+    except Exception as e:
+        error_message = f"Error fetching companies: {e}"
+        log_error(err_file_path, error_message)
+        print(error_message)
+        return pd.DataFrame()  # Return an empty DataFrame in case of failure
+
+def get_company_info(companies_df, file_path, err_file_path, is_test=True):
     """Fetch and save detailed company information."""
     print('Start collecting company info')
     if is_test:
         companies_df = companies_df.head(10)  # Limit to the first 10 rows if in test mode
-    with open(file_path, "w", encoding="utf-8") as f:
-        f.write("[")
+
+    # Check if the file exists and remove the closing "]"
+    if os.path.exists(file_path):
+        with open(file_path, "rb+") as f:
+            f.seek(-1, os.SEEK_END)  # Move to the last character
+            last_char = f.read(1)
+            if last_char == b"]":  # Check if the file ends with "]"
+                f.seek(-1, os.SEEK_END)  # Move back one character
+                f.truncate()  # Remove the "]"
+                f.write(b",\n")  # Add a comma to prepare for appending
+
+    else:
+        # If the file doesn't exist, create it and write the opening "["
+        with open(file_path, "w", encoding="utf-8") as f:
+            f.write("[")
+
     for idx, symbol in enumerate(companies_df['symbol']):
         company = Company(symbol=symbol)
         try:
@@ -55,11 +80,15 @@ def get_company_info(companies_df, file_path, is_test=True):
             print(f"Company info for {symbol} successfully written")
             time.sleep(3)
         except Exception as e:
-            print(f"Error fetching data for {symbol}: {e}")
+            error_message = f"Error fetching data for {symbol}: {e}"
+            log_error(err_file_path, error_message)
+            print(error_message)
+
+    # Add the closing "]" to the JSON file
     with open(file_path, "a", encoding="utf-8") as f:
         f.write("]")
 
-def get_officers(companies_df, file_path, is_test=True):
+def get_officers(companies_df, file_path, err_file_path, is_test=True):
     """Fetch and save officers' data."""
     print('Start collecting officers data')
     if is_test:
@@ -79,9 +108,11 @@ def get_officers(companies_df, file_path, is_test=True):
             print(f"Officers data for {symbol} successfully written")
             time.sleep(3)
         except Exception as e:
-            print(f"Error fetching officers data for {symbol}: {e}")
+            error_message = f"Error fetching officers data for {symbol}: {e}"
+            log_error(err_file_path, error_message)
+            print(error_message)
 
-def get_shareholders(companies_df, file_path, is_test=True):
+def get_shareholders(companies_df, file_path, err_file_path, is_test=True):
     """Fetch and save shareholders' data."""
     print('Start collecting shareholders data')
     if is_test:
@@ -111,9 +142,11 @@ def get_shareholders(companies_df, file_path, is_test=True):
             print(f"Shareholders data for {symbol} successfully written to {file_path}")
             time.sleep(3)
         except Exception as e:
-            print(f"Error fetching shareholders data for {symbol}: {e}")
+            error_message = f"Error fetching shareholders data for {symbol}: {e}"
+            log_error(err_file_path, error_message)
+            print(error_message)
 
-def get_dividends(companies_df, file_path, is_test=True):
+def get_dividends(companies_df, file_path, err_file_path, is_test=True):
     """Fetch and save dividends data."""
     print('Start collecting dividends data')
     if is_test:
@@ -143,9 +176,11 @@ def get_dividends(companies_df, file_path, is_test=True):
             print(f"Dividends data for {symbol} successfully written to {file_path}")
             time.sleep(3)
         except Exception as e:
-            print(f"Error fetching dividends data for {symbol}: {e}")
+            error_message = f"Error fetching dividends data for {symbol}: {e}"
+            log_error(err_file_path, error_message)
+            print(error_message)
 
-def get_stock_quote_history(companies_df, file_path, start_date="2020-01-01", end_date=None, is_test=True):
+def get_stock_quote_history(companies_df, file_path, err_file_path, start_date="2020-01-01", end_date=None, is_test=True):
     """Fetch and save stock quote history data."""
     print('Start collecting stock quote history data')
     
@@ -179,9 +214,46 @@ def get_stock_quote_history(companies_df, file_path, start_date="2020-01-01", en
             else:
                 quote_history_df.to_csv(file_path, mode="a", header=False, index=False, encoding="utf-8")
             
-            print(f"Stock quote history for {symbol} successfully written to {file_path}")
+            print(f"Stock quote history for {symbol} successfully written")
             
             # Sleep for 30 seconds before fetching the next company
-            time.sleep(30)
+            time.sleep(3)
         except Exception as e:
-            print(f"Error fetching stock quote history for {symbol}: {e}")
+            error_message = f"Error fetching stock quote history for {symbol}: {e}"
+            log_error(err_file_path, error_message)
+            print(error_message)
+
+def get_income_statement(companies_df, file_path, err_file_path, quarter=True, is_test=True):
+    """Fetch and save income statement data."""
+    print('Start collecting income statement data')
+    
+    # Determine the period based on the quarter parameter
+    period = 'quarter' if quarter else 'year'
+    
+    # Limit to the first 10 companies if in test mode
+    if is_test:
+        companies_df = companies_df.head(10)
+    
+    for symbol in companies_df['symbol']:
+        try:
+            # Fetch income statement data
+            stock = Vnstock().stock(symbol=symbol, source='VCI')
+            income_statement = stock.finance.income_statement(period=period, lang='vi')
+            
+            # Convert to DataFrame
+            income_statement_df = pd.DataFrame(income_statement)
+            
+            # Save to CSV
+            if not os.path.exists(file_path):
+                income_statement_df.to_csv(file_path, index=False, encoding="utf-8")
+            else:
+                income_statement_df.to_csv(file_path, mode="a", header=False, index=False, encoding="utf-8")
+            
+            print(f"Income statement for {symbol} successfully written")
+            
+            # Sleep for 3 seconds before fetching the next company
+            time.sleep(3)
+        except Exception as e:
+            error_message = f"Error fetching income statement for {symbol}: {e}"
+            log_error(err_file_path, error_message)
+            print(error_message)

@@ -29,17 +29,17 @@ The **DEOps_Project** is a data engineering project focused on building and oper
 
 ```
 DEOps_Project/
-├── data/                  # Directory for storing output files
-│   ├── companies.csv      # Generated CSV file with company data
-│   ├── company_info.json  # Generated JSON file with detailed company info
-│   ├── company_officers.csv # Generated CSV file with company officers data
-├── src/                   # Source code directory
-│   ├── data_utils.py      # Library containing reusable functions
-│   ├── main.py            # Main script for executing the pipeline
-├── .env                   # Environment variables file
-├── Dockerfile             # Dockerfile for building the container
-├── docker-compose.yml     # Docker Compose configuration file
-├── .gitignore             # Git ignore file
+├── data/                        # Directory for storing output files
+├── logs/                        # Directory for storing log files
+│   ├── error_log.txt            # Log file for error messages
+├── src/                         # Source code directory
+│   ├── data_utils.py            # Library containing reusable functions
+│   ├── main.py                  # Main script for executing the pipeline
+├── .env                         # Environment variables file
+├── Dockerfile                   # Dockerfile for building the container
+├── docker-compose.yml           # Docker Compose configuration file
+├── .gitignore                   # Git ignore file
+├── README.md                    # Project documentation
 ```
 
 ---
@@ -63,10 +63,16 @@ cd DEOps_Project
 ### Step 2: Create the `.env` File
 Create a `.env` file in the root directory with the following content:
 ```
-DATA_DIR=../data
+DATA_DIR=./data
+LOG_DIR=./logs
+ERROR_LOG_FILE=${LOG_DIR}/error_log.txt
 COMPANIES_FILE=${DATA_DIR}/companies.csv
 COMPANY_INFO_FILE=${DATA_DIR}/company_info.json
 COMPANY_OFFICER_FILE=${DATA_DIR}/company_officers.csv
+COMPANY_SHAREHOLDER_FILE=${DATA_DIR}/company_shareholders.csv
+COMPANY_DIVIDENDS_FILE=${DATA_DIR}/company_dividends.csv
+COMPANY_STOCK_QUOTE_FILE=${DATA_DIR}/stock_quote_history.csv
+COMPANY_INCOME_STATEMENT_FILE=${DATA_DIR}/income_statement.csv
 ```
 
 ### Step 3: Build and Run the Project
@@ -80,19 +86,19 @@ docker-compose up --build
 #### Without Docker Compose
 Build the Docker image:
 ```bash
-docker build -t data-crawler .
+docker build -t deops_project .
 ```
 Run the container:
 ```bash
-docker run --rm -v $(pwd)/data:/app/data data-crawler
+docker run --rm -v $(pwd)/data:/app/data -v $(pwd)/logs:/app/logs deops_project
 ```
 
 ---
 
 ## Notes
 
-- Ensure the `data/` directory exists or is created automatically by the script.
-- Add `.env` and `data/` to `.gitignore` to prevent sensitive data and generated files from being committed to version control.
+- Ensure the `data/` and `logs/` directories exist or are created automatically by the script.
+- Add `.env`, `data/`, and `logs/` to `.gitignore` to prevent sensitive data and generated files from being committed to version control.
 
 ---
 
@@ -105,6 +111,5 @@ This project is licensed under the MIT License. See the `LICENSE` file for detai
 ## Acknowledgments
 
 - [vnstock](https://pypi.org/project/vnstock/) for providing the stock market API.
-- [python-dotenv](https://pypi.org/project/python-dotenv/) for managing environment variables.
 - [psycopg2](https://pypi.org/project/psycopg2/) for PostgreSQL database integration.
 - [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/) for containerization.
