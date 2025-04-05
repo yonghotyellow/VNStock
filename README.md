@@ -57,7 +57,7 @@ DEOps_Project/
 ### Step 1: Clone the Repository
 ```bash
 git clone <repository-url>
-cd DEOps_Project
+cd VNStock
 ```
 
 ### Step 2: Create the `.env` File
