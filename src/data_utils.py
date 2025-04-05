@@ -3,11 +3,7 @@ import time
 import json
 import pandas as pd
 from vnstock import Vnstock, Company
-from dotenv import load_dotenv
 from datetime import datetime
-
-# Load environment variables from .env file
-load_dotenv()
 
 def log_error(err_file_path, message):
     """Log errors with timestamp to the specified error file."""
