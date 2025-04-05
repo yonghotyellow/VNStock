@@ -63,16 +63,19 @@ cd VNStock
 ### Step 2: Create the `.env` File
 Create a `.env` file in the root directory with the following content:
 ```
-DATA_DIR=./data
-LOG_DIR=./logs
-ERROR_LOG_FILE=${LOG_DIR}/error_log.txt
+DATA_DIR=../data
+LOG_DIR=../logs
+ERROR_LOG_FILE=${LOG_DIR}/error.txt
 COMPANIES_FILE=${DATA_DIR}/companies.csv
 COMPANY_INFO_FILE=${DATA_DIR}/company_info.json
-COMPANY_OFFICER_FILE=${DATA_DIR}/company_officers.csv
+COMPANY_OFFICER_FILE=${DATA_DIR}/comapny_officers.csv
 COMPANY_SHAREHOLDER_FILE=${DATA_DIR}/company_shareholders.csv
 COMPANY_DIVIDENDS_FILE=${DATA_DIR}/company_dividends.csv
-COMPANY_STOCK_QUOTE_FILE=${DATA_DIR}/stock_quote_history.csv
-COMPANY_INCOME_STATEMENT_FILE=${DATA_DIR}/income_statement.csv
+COMPANY_STOCK_QUOTE_FILE=${DATA_DIR}/company_stock_quote.csv
+COMPANY_INCOME_STATEMENT_FILE=../data/income_statement.csv
+COMPANY_BALANCE_SHEET_FILE=../data/balance_sheet.csv
+COMPANY_CASH_FLOW_FILE=../data/cash_flow.csv
+COMPANY_RATIO_FILE=../data/ratio.csv
 ```
 
 ### Step 3: Build and Run the Project
