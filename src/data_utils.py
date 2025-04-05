@@ -216,7 +216,7 @@ def get_stock_quote_history(companies_df, file_path, err_file_path, start_date="
             
             print(f"Stock quote history for {symbol} successfully written")
             
-            # Sleep for 30 seconds before fetching the next company
+            # Sleep for 3 seconds before fetching the next company
             time.sleep(3)
         except Exception as e:
             error_message = f"Error fetching stock quote history for {symbol}: {e}"
