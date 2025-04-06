@@ -19,7 +19,7 @@ COMPANY_BALANCE_SHEET_FILE = os.getenv("COMPANY_BALANCE_SHEET_FILE")
 COMPANY_CASH_FLOW_FILE = os.getenv("COMPANY_CASH_FLOW_FILE")
 COMPANY_RATIO_FILE = os.getenv("COMPANY_RATIO_FILE")
 ERROR_LOG_FILE = os.getenv("ERROR_LOG_FILE")
-
+IS_TEST = os.getenv("IS_TEST", "True").lower() in ("true", "1", "t")
 def main(is_test):
     if not os.path.exists(COMPANIES_FILE):
         companies_df = get_companies(COMPANIES_FILE, ERROR_LOG_FILE)
@@ -35,8 +35,8 @@ def main(is_test):
     print("Financial data fetched and stored.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the Financial Data Service pipeline.")
-    parser.add_argument("--test", action=argparse.BooleanOptionalAction, default=True,
-                        help="Run in test mode (default: True).")
-    args = parser.parse_args()
-    main(is_test=args.test)
+    # parser = argparse.ArgumentParser(description="Run the Financial Data Service pipeline.")
+    # parser.add_argument("--test", action=argparse.BooleanOptionalAction, default=True,
+    #                     help="Run in test mode (default: True).")
+    # args = parser.parse_args()
+    main(is_test=IS_TEST)

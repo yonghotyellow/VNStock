@@ -1,7 +1,7 @@
 version: "3.8"
 
 services:
-  data-crawler:
+  company:
     build:
       context: .
       dockerfile: Dockerfile
@@ -9,4 +9,71 @@ services:
       - .env
     volumes:
       - ./data:/app/data
-    command: ["python", "main.py"]
+      - ./logs:/app/logs
+    command: [ "python", "src/company.py" ]
+
+  financial-data:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    command: [ "python", "src/financial_data.py" ]
+
+  company-info:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    command: [ "python", "src/company_info.py" ]
+
+  company-officer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    command: [ "python", "src/company_officer.py" ]
+
+  company-shareholder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    command: [ "python", "src/company_shareholder.py" ]
+
+  company-dividends:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    command: [ "python", "src/company_dividends.py" ]
+
+  company-stock-quote:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+    command: [ "python", "src/company_stock_quote.py" ]

@@ -10,6 +10,7 @@ load_dotenv()
 COMPANIES_FILE = os.getenv("COMPANIES_FILE")
 COMPANY_INFO_FILE = os.getenv("COMPANY_INFO_FILE")
 ERROR_LOG_FILE = os.getenv("ERROR_LOG_FILE")
+IS_TEST = os.getenv("IS_TEST", "True").lower() in ("true", "1", "t")
 
 def main(is_test):
     # Ensure companies file is present
@@ -22,8 +23,8 @@ def main(is_test):
     print("Company info fetched and stored.")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run the Company Info Service pipeline.")
-    parser.add_argument("--test", action=argparse.BooleanOptionalAction, default=True,
-                        help="Run in test mode (default: True).")
-    args = parser.parse_args()
-    main(is_test=args.test)
+    # parser = argparse.ArgumentParser(description="Run the Company Info Service pipeline.")
+    # parser.add_argument("--test", action=argparse.BooleanOptionalAction, default=True,
+    #                     help="Run in test mode (default: True).")
+    # args = parser.parse_args()
+    main(is_test=IS_TEST)
