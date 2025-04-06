@@ -10,7 +10,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-    command: [ "python", "src/company.py" ]
+    command: [ "python", "src/companies.py" ]
 
   financial-data:
     build:
@@ -43,7 +43,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-    command: [ "python", "src/company_officer.py" ]
+    command: [ "python", "src/officers.py" ]
 
   company-shareholder:
     build:
@@ -54,7 +54,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-    command: [ "python", "src/company_shareholder.py" ]
+    command: [ "python", "src/shareholders.py" ]
 
   company-dividends:
     build:
@@ -65,7 +65,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-    command: [ "python", "src/company_dividends.py" ]
+    command: [ "python", "src/dividends.py" ]
 
   company-stock-quote:
     build:
@@ -76,4 +76,4 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-    command: [ "python", "src/company_stock_quote.py" ]
+    command: [ "python", "src/stock_quote.py" ]

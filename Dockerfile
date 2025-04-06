@@ -1,4 +1,4 @@
-FROM python:3.9
+FROM python:3.10
 
 # Install dependencies
 COPY requirements.txt .
@@ -12,5 +12,5 @@ COPY src/ ./src
 COPY .env .
 
 # Run the script
-ENTRYPOINT ["python"]
+# ENTRYPOINT ["python"]
 CMD ["/bin/bash"]
