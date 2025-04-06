@@ -1,15 +1,16 @@
-FROM python:3.9
+FROM python:3.10
 
 # Install dependencies
-RUN pip install vnstock pandas python-dotenv
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Set the working directory
 WORKDIR /app
 
 # Copy the application files
-COPY src/data_utils.py .
-COPY src/main.py .
+COPY src/ ./src
 COPY .env .
 
 # Run the script
-ENTRYPOINT ["python", "main.py"]
+# ENTRYPOINT ["python"]
+CMD ["/bin/bash"]

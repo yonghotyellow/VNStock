@@ -1,0 +1,20 @@
+# Ignore data and logs folders (we mount them with volumes anyway)
+data/
+logs/
+
+# Ignore Python cache and compiled files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore git files
+.git
+.gitignore
+
+# VSCode or IDE-specific
+.vscode/
+.idea/
+
+# System files
+.DS_Store

@@ -5,6 +5,7 @@ import pandas as pd
 from vnstock import Vnstock, Company
 from datetime import datetime
 from functools import wraps
+import re
 
 def log_error(err_file_path, message):
     """Log errors with timestamp to the specified error file."""
@@ -46,26 +47,26 @@ def append_json(file_path, data, is_last=False):
             f.write(",\n")
 
 def retry_on_error(func):
-    """
-    Decorator to retry a function up to 3 times with delays of 10, 30, and 60 seconds
-    if an exception is raised.
-    """
     @wraps(func)
     def wrapper(*args, **kwargs):
         delays = [10, 30, 60]
-        for attempt, delay in enumerate([0] + delays):
+        for attempt in range(len(delays) + 1):
             try:
-                if attempt > 0:
-                    # Delay before retrying (if not the first attempt)
-                    time.sleep(delay)
                 return func(*args, **kwargs)
             except Exception as e:
-                if attempt < len(delays):
-                    # Log the retry attempt
+                wait_time = delays[attempt] if attempt < len(delays) else None
+
+                # Check if it's a VCI rate limit message
+                msg = str(e)
+                match = re.search(r"thử lại sau (\d+) giây", msg)
+                if match:
+                    wait_time = int(match.group(1)) + 2  # give buffer
+
+                if wait_time and attempt < len(delays):
                     error_message = f"Retry {attempt + 1} for {func.__name__} due to error: {e}"
                     print(error_message)
                     log_error(args[-1], error_message)
-                    # log_error(, error_message)
+                    time.sleep(wait_time)
                 else:
                     raise e
     return wrapper
@@ -126,6 +127,7 @@ def get_company_info(companies_df, file_path, err_file_path, is_test=True):
             is_last = (idx == num_symbols - 1)
             append_json(file_path, info, is_last=is_last)
             print(f"Company info for {symbol} successfully written to {file_path}")
+            time.sleep(5)
         except Exception as e:
             error_message = f"Error fetching data for {symbol}: {e}"
             log_error(err_file_path, error_message)
@@ -154,6 +156,7 @@ def get_officers(companies_df, file_path, err_file_path, is_test=True):
             officers_df = officers_df[cols]
             write_or_append_csv(officers_df, file_path)
             print(f"Officers data for {symbol} successfully written to {file_path}")
+            time.sleep(5)
         except Exception as e:
             error_message = f"Error fetching officers data for {symbol}: {e}"
             log_error(err_file_path, error_message)
@@ -179,6 +182,7 @@ def get_shareholders(companies_df, file_path, err_file_path, is_test=True):
             shareholders_df = shareholders_df[cols]
             write_or_append_csv(shareholders_df, file_path)
             print(f"Shareholders data for {symbol} successfully written to {file_path}")
+            time.sleep(5)
         except Exception as e:
             error_message = f"Error fetching shareholders data for {symbol}: {e}"
             log_error(err_file_path, error_message)
@@ -204,6 +208,7 @@ def get_dividends(companies_df, file_path, err_file_path, is_test=True):
             dividends_df = dividends_df[cols]
             write_or_append_csv(dividends_df, file_path)
             print(f"Dividends data for {symbol} successfully written to {file_path}")
+            time.sleep(5)
         except Exception as e:
             error_message = f"Error fetching dividends data for {symbol}: {e}"
             log_error(err_file_path, error_message)
@@ -232,6 +237,7 @@ def get_stock_quote_history(companies_df, file_path, err_file_path, start_date="
             quote_history_df = quote_history_df[cols]
             write_or_append_csv(quote_history_df, file_path)
             print(f"Stock quote history for {symbol} successfully written to {file_path}")
+            time.sleep(15)
         except Exception as e:
             error_message = f"Error fetching stock quote history for {symbol}: {e}"
             log_error(err_file_path, error_message)
@@ -259,6 +265,7 @@ def get_financial_data(func_fetch, companies_df, file_path, err_file_path, perio
             df = pd.DataFrame(data)
             write_or_append_csv(df, file_path)
             print(f"Financial data for {symbol} successfully written to {file_path}")
+            time.sleep(15)
         except Exception as e:
             error_message = f"Error fetching financial data for {symbol} using {func_fetch.__name__}: {e}"
             log_error(err_file_path, error_message)
