@@ -22,6 +22,7 @@ The **DEOps_Project** is a data engineering project focused on building and oper
 - **Python**: For scripting and data processing.
 - **Docker**: For containerization and portability.
 - **PostgreSQL**: For storing and querying processed data.
+- **Docker Compose**: For managing multi-container Docker applications.
 
 ---
 
@@ -34,7 +35,7 @@ DEOps_Project/
 │   ├── error_log.txt            # Log file for error messages
 ├── src/                         # Source code directory
 │   ├── data_utils.py            # Library containing reusable functions
-│   ├── main.py                  # Main script for executing the pipeline
+│   ├── other python files       # Script for fetching all data
 ├── .env                         # Environment variables file
 ├── Dockerfile                   # Dockerfile for building the container
 ├── docker-compose.yml           # Docker Compose configuration file
@@ -63,8 +64,8 @@ cd VNStock
 ### Step 2: Create the `.env` File
 Create a `.env` file in the root directory with the following content:
 ```
-DATA_DIR=../data
-LOG_DIR=../logs
+DATA_DIR=/app/data
+LOG_DIR=/app/logs
 ERROR_LOG_FILE=${LOG_DIR}/error.txt
 COMPANIES_FILE=${DATA_DIR}/companies.csv
 COMPANY_INFO_FILE=${DATA_DIR}/company_info.json
@@ -72,10 +73,11 @@ COMPANY_OFFICER_FILE=${DATA_DIR}/comapny_officers.csv
 COMPANY_SHAREHOLDER_FILE=${DATA_DIR}/company_shareholders.csv
 COMPANY_DIVIDENDS_FILE=${DATA_DIR}/company_dividends.csv
 COMPANY_STOCK_QUOTE_FILE=${DATA_DIR}/company_stock_quote.csv
-COMPANY_INCOME_STATEMENT_FILE=../data/income_statement.csv
-COMPANY_BALANCE_SHEET_FILE=../data/balance_sheet.csv
-COMPANY_CASH_FLOW_FILE=../data/cash_flow.csv
-COMPANY_RATIO_FILE=../data/ratio.csv
+COMPANY_INCOME_STATEMENT_FILE=${DATA_DIR}/income_statement.csv
+COMPANY_BALANCE_SHEET_FILE=${DATA_DIR}/balance_sheet.csv
+COMPANY_CASH_FLOW_FILE=${DATA_DIR}/cash_flow.csv
+COMPANY_RATIO_FILE=${DATA_DIR}/ratio.csv
+IS_TEST=True
 ```
 
 ### Step 3: Build and Run the Project
@@ -84,6 +86,12 @@ COMPANY_RATIO_FILE=../data/ratio.csv
 Build and run the container:
 ```bash
 docker-compose up --build
+```
+
+If you want to set the `IS_TEST` parameter dynamically, you can modify the `.env` file or set it using an environment variable:
+```bash
+set IS_TEST=False
+docker-compose up -d
 ```
 
 #### Without Docker Compose
@@ -98,18 +106,6 @@ docker run --rm -v $(pwd)/data:/app/data -v $(pwd)/logs:/app/logs deops_project
 
 ---
 
-## Notes
-
-- Ensure the `data/` and `logs/` directories exist or are created automatically by the script.
-- Add `.env`, `data/`, and `logs/` to `.gitignore` to prevent sensitive data and generated files from being committed to version control.
-
----
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
-
----
 
 ## Acknowledgments
 

@@ -265,7 +265,7 @@ def get_financial_data(func_fetch, companies_df, file_path, err_file_path, perio
             df = pd.DataFrame(data)
             write_or_append_csv(df, file_path)
             print(f"Financial data for {symbol} successfully written to {file_path}")
-            time.sleep(15)
+            time.sleep(5)
         except Exception as e:
             error_message = f"Error fetching financial data for {symbol} using {func_fetch.__name__}: {e}"
             log_error(err_file_path, error_message)
