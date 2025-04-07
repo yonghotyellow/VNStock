@@ -7,6 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Set the working directory
 WORKDIR /app
 
+RUN mkdir -p data logs
+
 # Copy the application files
 COPY src/ ./src
 COPY .env .
