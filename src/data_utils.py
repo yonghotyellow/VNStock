@@ -3,9 +3,12 @@ import time
 import json
 import pandas as pd
 from vnstock import Vnstock, Company
+from gcs_utils import upload_to_gcs
 from datetime import datetime
 from functools import wraps
 import re
+import traceback
+import io
 
 def log_error(err_file_path, message):
     """Log errors with timestamp to the specified error file."""
@@ -71,21 +74,26 @@ def retry_on_error(func):
                     raise e
     return wrapper
 
-def get_companies(file_path, err_file_path):
-    """Fetch and save the list of companies."""
+def get_companies(err_file_path):
+    """Fetch the list of companies and return as in-memory Parquet bytes."""
     try:
         stock = Vnstock().stock(symbol='ACB', source='VCI')
         companies = pd.DataFrame(stock.listing.symbols_by_exchange())
         companies_df = companies[(companies['exchange'] == 'HSX') & (companies['type'] == 'STOCK')]
         companies_df = companies_df.drop(columns=['organ_short_name', 'organ_name'], axis=1)
-        companies_df.to_csv(file_path, index=False, encoding='utf-8')
-        print(f"Successfully saved companies.csv file to {file_path}")
-        return companies_df
+
+        buffer = io.BytesIO()
+        companies_df.to_parquet(buffer, index=False)
+        buffer.seek(0)
+
+        print("Companies data prepared in-memory as Parquet")
+        return buffer
+
     except Exception as e:
-        error_message = f"Error fetching companies: {e}"
+        error_message = f"Error fetching companies: {e}\n{traceback.format_exc()}"
         log_error(err_file_path, error_message)
         print(error_message)
-        return pd.DataFrame()  # Return an empty DataFrame in case of failure
+        return None
 
 @retry_on_error
 def fetch_company_info(symbol, err_file_path):
@@ -112,29 +120,38 @@ def fetch_company_info(symbol, err_file_path):
     }
     return info
 
-def get_company_info(companies_df, file_path, err_file_path, is_test=True):
-    """Fetch and save detailed company information."""
+def get_company_info(companies_df, err_file_path, is_test=True):
+    """Fetch company info and return a BytesIO parquet buffer."""
     print('Start collecting company info')
     if is_test:
-        companies_df = companies_df.head(10)  # Limit to the first 10 rows if in test mode
+        companies_df = companies_df.head(10)
 
-    init_json_file(file_path)
-    num_symbols = len(companies_df['symbol'])
-    for idx, symbol in enumerate(companies_df['symbol']):
+    company_infos = []
+    for symbol in companies_df['symbol']:
         try:
             info = fetch_company_info(symbol, err_file_path)
-            # Check if it's the last item to properly close the JSON array
-            is_last = (idx == num_symbols - 1)
-            append_json(file_path, info, is_last=is_last)
-            print(f"Company info for {symbol} successfully written to {file_path}")
+            company_infos.append(info)
+            print(f"Collected info for {symbol}")
             time.sleep(5)
         except Exception as e:
-            error_message = f"Error fetching data for {symbol}: {e}"
+            error_message = f"Error fetching data for {symbol}: {e}\n{traceback.format_exc()}"
             log_error(err_file_path, error_message)
             print(error_message)
-    # If file wasn't properly closed, ensure the JSON array is closed.
-    with open(file_path, "a", encoding="utf-8") as f:
-        f.write("]")
+
+    if not company_infos:
+        error_message = "No data collected."
+        log_error(err_file_path, error_message)
+        print(error_message)
+        return None
+
+    # Convert to parquet in memory
+    df = pd.DataFrame(company_infos)
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, index=False)
+    buffer.seek(0)
+    
+    print("Company info data prepared in-memory as Parquet")
+    return buffer
 
 @retry_on_error
 def fetch_officers(symbol, err_file_path):
@@ -142,25 +159,46 @@ def fetch_officers(symbol, err_file_path):
     company = Company(symbol=symbol)
     return company.officers()
 
-def get_officers(companies_df, file_path, err_file_path, is_test=True):
-    """Fetch and save officers' data."""
+def get_officers(companies_df, err_file_path, is_test=True):
+    """Fetch company officers and return a BytesIO parquet buffer."""
     print('Start collecting officers data')
     if is_test:
-        companies_df = companies_df.head(10)
+        companies_df = companies_df.head(1)
+
+    officers_data = []
     for symbol in companies_df['symbol']:
         try:
             officers = fetch_officers(symbol, err_file_path)
-            officers_df = pd.DataFrame(officers)
-            officers_df['symbol'] = symbol
-            cols = ['symbol'] + [col for col in officers_df.columns if col != 'symbol']
-            officers_df = officers_df[cols]
-            write_or_append_csv(officers_df, file_path)
-            print(f"Officers data for {symbol} successfully written to {file_path}")
+            cleaned_officers = []
+            for officer in officers:
+                if isinstance(officer, dict):
+                    officer_with_symbol = {'symbol': symbol, **officer}
+                    cleaned_officers.append(officer_with_symbol)
+                    print(officer_with_symbol)
+            officers_data.extend(cleaned_officers)
+            print(f"Collected officers data for {symbol}")
             time.sleep(5)
         except Exception as e:
-            error_message = f"Error fetching officers data for {symbol}: {e}"
+            error_message = f"Error fetching officers data for {symbol}: {e}\n{traceback.format_exc()}"
             log_error(err_file_path, error_message)
             print(error_message)
+    print(f"Final officers_data: {officers_data}")
+    if not officers_data:
+        error_message = "No officers data collected."
+        log_error(err_file_path, error_message)
+        print(error_message)
+        return None
+
+    # Convert to Parquet in memory
+    df = pd.DataFrame(officers_data)
+    cols = ['symbol'] + [col for col in df.columns if col != 'symbol']  # Reorder columns
+    df = df[cols]
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, index=False)
+    buffer.seek(0)
+
+    print("Officers data prepared in-memory as Parquet")
+    return buffer
 
 @retry_on_error
 def fetch_shareholders(symbol, err_file_path):
@@ -168,25 +206,42 @@ def fetch_shareholders(symbol, err_file_path):
     company = Company(symbol=symbol)
     return company.shareholders()
 
-def get_shareholders(companies_df, file_path, err_file_path, is_test=True):
-    """Fetch and save shareholders' data."""
+def get_shareholders(companies_df, err_file_path, is_test=True):
+    """Fetch company shareholders and return a BytesIO parquet buffer."""
     print('Start collecting shareholders data')
     if is_test:
         companies_df = companies_df.head(10)
+
+    shareholders_data = []
     for symbol in companies_df['symbol']:
         try:
             shareholders = fetch_shareholders(symbol, err_file_path)
-            shareholders_df = pd.DataFrame(shareholders)
-            shareholders_df['symbol'] = symbol
-            cols = ['symbol'] + [col for col in shareholders_df.columns if col != 'symbol']
-            shareholders_df = shareholders_df[cols]
-            write_or_append_csv(shareholders_df, file_path)
-            print(f"Shareholders data for {symbol} successfully written to {file_path}")
+            for shareholder in shareholders:
+                shareholder['symbol'] = symbol  # Add the symbol to each shareholder's data
+            shareholders_data.extend(shareholders)
+            print(f"Collected shareholders data for {symbol}")
             time.sleep(5)
         except Exception as e:
-            error_message = f"Error fetching shareholders data for {symbol}: {e}"
+            error_message = f"Error fetching shareholders data for {symbol}: {e}\n{traceback.format_exc()}"
             log_error(err_file_path, error_message)
             print(error_message)
+
+    if not shareholders_data:
+        error_message = "No shareholders data collected."
+        log_error(err_file_path, error_message)
+        print(error_message)
+        return None
+
+    # Convert to Parquet in memory
+    df = pd.DataFrame(shareholders_data)
+    cols = ['symbol'] + [col for col in df.columns if col != 'symbol']  # Reorder columns
+    df = df[cols]
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, index=False)
+    buffer.seek(0)
+
+    print("Shareholders data prepared in-memory as Parquet")
+    return buffer
 
 @retry_on_error
 def fetch_dividends(symbol, err_file_path):
@@ -221,7 +276,6 @@ def fetch_stock_quote_history(symbol, start_date, end_date, err_file_path):
     quote_history = stock.quote.history(start=start_date, end=end_date)
     return pd.DataFrame(quote_history)
 
-
 def get_stock_quote_history(companies_df, file_path, err_file_path, start_date="2020-01-01", end_date=None, is_test=True):
     """Fetch and save stock quote history data."""
     print('Start collecting stock quote history data')
@@ -243,7 +297,6 @@ def get_stock_quote_history(companies_df, file_path, err_file_path, start_date="
             log_error(err_file_path, error_message)
             print(error_message)
 
-
 @retry_on_error
 def fetch_with_retry(fetch_func, symbol, period, lang, err_file_path):
     """Retry fetching data with exponential backoff."""
@@ -260,7 +313,6 @@ def get_financial_data(func_fetch, companies_df, file_path, err_file_path, perio
         companies_df = companies_df.head(10)
     for symbol in companies_df['symbol']:
         try:
-            # stock = Vnstock().stock(symbol=symbol, source='VCI')
             data = fetch_with_retry(func_fetch, symbol, period=period_type, lang='vi', err_file_path=err_file_path)
             df = pd.DataFrame(data)
             write_or_append_csv(df, file_path)

@@ -1,7 +1,8 @@
 import os
 import pandas as pd
-import argparse
-from data_utils import get_officers, get_companies
+from data_utils import get_officers
+from gcs_utils import upload_bytes_to_gcs
+from companies import get_companies_df
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -12,13 +13,16 @@ COMPANY_OFFICERS_FILE = os.getenv("COMPANY_OFFICER_FILE")
 ERROR_LOG_FILE = os.getenv("ERROR_LOG_FILE")
 IS_TEST = os.getenv("IS_TEST", "True").lower() in ("true", "1", "t")
 def main(is_test):
-    if not os.path.exists(COMPANIES_FILE):
-        companies_df = get_companies(COMPANIES_FILE, ERROR_LOG_FILE)
+    companies_df = get_companies_df()
+
+    # Fetch officers' data and prepare it as a Parquet buffer
+    parquet_buffer = get_officers(companies_df, ERROR_LOG_FILE, is_test)
+    if parquet_buffer:
+        # Upload the Parquet buffer to GCS
+        upload_bytes_to_gcs(parquet_buffer, "raw/officers/officers.parquet")
+        print("Officers data uploaded to GCS successfully.")
     else:
-        companies_df = pd.read_csv(COMPANIES_FILE, encoding="utf-8")
-    
-    get_officers(companies_df, COMPANY_OFFICERS_FILE, ERROR_LOG_FILE, is_test)
-    print("Officers data fetched and stored.")
+        print("Failed to fetch officers data.")
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser(description="Run the Officers Service pipeline.")

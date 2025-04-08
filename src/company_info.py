@@ -1,7 +1,9 @@
 import os
 import pandas as pd
 import argparse
-from data_utils import get_company_info, get_companies
+from data_utils import get_company_info
+from gcs_utils import upload_bytes_to_gcs
+from companies import get_companies_df
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -13,14 +15,11 @@ ERROR_LOG_FILE = os.getenv("ERROR_LOG_FILE")
 IS_TEST = os.getenv("IS_TEST", "True").lower() in ("true", "1", "t")
 
 def main(is_test):
-    # Ensure companies file is present
-    if not os.path.exists(COMPANIES_FILE):
-        companies_df = get_companies(COMPANIES_FILE, ERROR_LOG_FILE)
-    else:
-        companies_df = pd.read_csv(COMPANIES_FILE, encoding="utf-8")
-    
-    get_company_info(companies_df, COMPANY_INFO_FILE, ERROR_LOG_FILE, is_test)
-    print("Company info fetched and stored.")
+    companies_df = get_companies_df()
+
+    parquet_buffer = get_company_info(companies_df, ERROR_LOG_FILE, is_test)
+    if parquet_buffer:
+        upload_bytes_to_gcs(parquet_buffer, "raw/company_info/company_info.parquet")
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser(description="Run the Company Info Service pipeline.")
