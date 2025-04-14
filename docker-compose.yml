@@ -5,6 +5,7 @@ x-common:
   build:
     context: .
     dockerfile: Dockerfile
+  image: vnstock:1.1
   env_file:
     - .env
   environment:
