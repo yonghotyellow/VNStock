@@ -13,13 +13,14 @@ IS_TEST = os.getenv("IS_TEST", "True").lower() in ("true", "1", "t")
 def main(is_test):
     companies_df = get_companies_df()
 
-    # Fetch dividends data grouped by year
-    yearly_buffers = get_dividends(companies_df, ERROR_LOG_FILE, is_test)
+    # Fetch dividends data grouped by symbol and year
+    buffers = get_dividends(companies_df, ERROR_LOG_FILE, is_test)
 
-    if yearly_buffers:
-        for year, buffer in yearly_buffers.items():
-            file_path = f"raw/dividends/dividends_{year}.parquet"
+    if buffers:
+        for (symbol, year), buffer in buffers.items():
+            file_path = f"raw/dividends/{symbol}/dividends_{year}.parquet"
             upload_bytes_to_gcs(buffer, file_path)
+        print("Uploaded in-memory Parquet files to GCS successfully.")
     else:
         print("Failed to fetch any dividends data.")
 
