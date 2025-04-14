@@ -18,7 +18,7 @@ def main(is_test):
 
     if yearly_buffers:
         for year, buffer in yearly_buffers.items():
-            file_path = f"raw/dividends/{year}/dividends.parquet"
+            file_path = f"raw/dividends/dividends_{year}.parquet"
             upload_bytes_to_gcs(buffer, file_path)
     else:
         print("Failed to fetch any dividends data.")
