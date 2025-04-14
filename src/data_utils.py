@@ -125,7 +125,7 @@ def get_company_info(companies_df, err_file_path, is_test=True):
     """Fetch company info and return a BytesIO parquet buffer."""
     print('Start collecting company info')
     if is_test:
-        companies_df = companies_df.head(3)
+        companies_df = companies_df.head(10)
 
     company_infos = []
     for symbol in companies_df['symbol']:
@@ -424,7 +424,6 @@ def get_financial_data(companies_df, err_file_path, period_type="quarter", is_te
             print(error_message)
 
     print("Finished collecting financial data")
-    print(result)
     return result
 
 def get_income_statement(companies_df, err_file_path, quarter=True, is_test=True):
