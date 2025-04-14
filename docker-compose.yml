@@ -1,10 +1,5 @@
-version: "3.8"
-
 x-common:
   &common-config
-  build:
-    context: .
-    dockerfile: Dockerfile
   image: vnstock:1.1
   env_file:
     - .env
@@ -43,6 +38,3 @@ services:
   company-stock-quote:
     <<: *common-config
     command: [ "python", "src/stock_quote.py" ]
-
-volumes:
-  vnstock:
