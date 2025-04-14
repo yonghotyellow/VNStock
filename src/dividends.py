@@ -1,24 +1,28 @@
 import os
-import pandas as pd
-import argparse
-from data_utils import get_dividends, get_companies
+from data_utils import get_dividends
+from gcs_utils import upload_bytes_to_gcs
+from companies import get_companies_df
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Environment variables
-COMPANIES_FILE = os.getenv("COMPANIES_FILE")
-COMPANY_DIVIDENDS_FILE = os.getenv("COMPANY_DIVIDENDS_FILE")
 ERROR_LOG_FILE = os.getenv("ERROR_LOG_FILE")
 IS_TEST = os.getenv("IS_TEST", "True").lower() in ("true", "1", "t")
+
 def main(is_test):
-    if not os.path.exists(COMPANIES_FILE):
-        companies_df = get_companies(COMPANIES_FILE, ERROR_LOG_FILE)
+    companies_df = get_companies_df()
+
+    # Fetch dividends data grouped by symbol and year
+    buffers = get_dividends(companies_df, ERROR_LOG_FILE, is_test)
+
+    if buffers:
+        for (symbol, year), buffer in buffers.items():
+            file_path = f"raw/dividends/{symbol}/dividends_{year}.parquet"
+            upload_bytes_to_gcs(buffer, file_path)
+        print("Uploaded in-memory Parquet files to GCS successfully.")
     else:
-        companies_df = pd.read_csv(COMPANIES_FILE, encoding="utf-8")
-    
-    get_dividends(companies_df, COMPANY_DIVIDENDS_FILE, ERROR_LOG_FILE, is_test)
-    print("Dividends data fetched and stored.")
+        print("Failed to fetch any dividends data.")
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser(description="Run the Dividends Service pipeline.")

@@ -3,9 +3,13 @@ import time
 import json
 import pandas as pd
 from vnstock import Vnstock, Company
+from gcs_utils import upload_to_gcs
 from datetime import datetime
 from functools import wraps
 import re
+import traceback
+import io
+from concurrent.futures import ThreadPoolExecutor
 
 def log_error(err_file_path, message):
     """Log errors with timestamp to the specified error file."""
@@ -71,21 +75,26 @@ def retry_on_error(func):
                     raise e
     return wrapper
 
-def get_companies(file_path, err_file_path):
-    """Fetch and save the list of companies."""
+def get_companies(err_file_path):
+    """Fetch the list of companies and return as in-memory Parquet bytes."""
     try:
         stock = Vnstock().stock(symbol='ACB', source='VCI')
         companies = pd.DataFrame(stock.listing.symbols_by_exchange())
         companies_df = companies[(companies['exchange'] == 'HSX') & (companies['type'] == 'STOCK')]
         companies_df = companies_df.drop(columns=['organ_short_name', 'organ_name'], axis=1)
-        companies_df.to_csv(file_path, index=False, encoding='utf-8')
-        print(f"Successfully saved companies.csv file to {file_path}")
-        return companies_df
+
+        buffer = io.BytesIO()
+        companies_df.to_parquet(buffer, index=False)
+        buffer.seek(0)
+
+        print("Companies data prepared in-memory as Parquet")
+        return buffer
+
     except Exception as e:
-        error_message = f"Error fetching companies: {e}"
+        error_message = f"Error fetching companies: {e}\n{traceback.format_exc()}"
         log_error(err_file_path, error_message)
         print(error_message)
-        return pd.DataFrame()  # Return an empty DataFrame in case of failure
+        return None
 
 @retry_on_error
 def fetch_company_info(symbol, err_file_path):
@@ -112,29 +121,38 @@ def fetch_company_info(symbol, err_file_path):
     }
     return info
 
-def get_company_info(companies_df, file_path, err_file_path, is_test=True):
-    """Fetch and save detailed company information."""
+def get_company_info(companies_df, err_file_path, is_test=True):
+    """Fetch company info and return a BytesIO parquet buffer."""
     print('Start collecting company info')
     if is_test:
-        companies_df = companies_df.head(10)  # Limit to the first 10 rows if in test mode
+        companies_df = companies_df.head(3)
 
-    init_json_file(file_path)
-    num_symbols = len(companies_df['symbol'])
-    for idx, symbol in enumerate(companies_df['symbol']):
+    company_infos = []
+    for symbol in companies_df['symbol']:
         try:
             info = fetch_company_info(symbol, err_file_path)
-            # Check if it's the last item to properly close the JSON array
-            is_last = (idx == num_symbols - 1)
-            append_json(file_path, info, is_last=is_last)
-            print(f"Company info for {symbol} successfully written to {file_path}")
+            company_infos.append(info)
+            print(f"Collected info for {symbol}")
             time.sleep(5)
         except Exception as e:
-            error_message = f"Error fetching data for {symbol}: {e}"
+            error_message = f"Error fetching data for {symbol}: {e}\n{traceback.format_exc()}"
             log_error(err_file_path, error_message)
             print(error_message)
-    # If file wasn't properly closed, ensure the JSON array is closed.
-    with open(file_path, "a", encoding="utf-8") as f:
-        f.write("]")
+
+    if not company_infos:
+        error_message = "No data collected."
+        log_error(err_file_path, error_message)
+        print(error_message)
+        return None
+
+    # Convert to parquet in memory
+    df = pd.DataFrame(company_infos)
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, index=False)
+    buffer.seek(0)
+    
+    print("Company info data prepared in-memory as Parquet")
+    return buffer
 
 @retry_on_error
 def fetch_officers(symbol, err_file_path):
@@ -142,25 +160,39 @@ def fetch_officers(symbol, err_file_path):
     company = Company(symbol=symbol)
     return company.officers()
 
-def get_officers(companies_df, file_path, err_file_path, is_test=True):
-    """Fetch and save officers' data."""
+def get_officers(companies_df, err_file_path, is_test=True):
+    """Fetch company officers and return a BytesIO parquet buffer."""
     print('Start collecting officers data')
     if is_test:
         companies_df = companies_df.head(10)
+
+    df = pd.DataFrame()
     for symbol in companies_df['symbol']:
         try:
             officers = fetch_officers(symbol, err_file_path)
-            officers_df = pd.DataFrame(officers)
-            officers_df['symbol'] = symbol
-            cols = ['symbol'] + [col for col in officers_df.columns if col != 'symbol']
-            officers_df = officers_df[cols]
-            write_or_append_csv(officers_df, file_path)
-            print(f"Officers data for {symbol} successfully written to {file_path}")
+            officers['symbol'] = symbol  # Add the symbol column
+            cols = ['symbol'] + [col for col in officers.columns if col != 'symbol']  # Reorder columns
+            officers = officers[cols]
+            df = pd.concat([df, officers], ignore_index=True)
+            print(f"Collected officers data for {symbol}")
             time.sleep(5)
         except Exception as e:
-            error_message = f"Error fetching officers data for {symbol}: {e}"
+            error_message = f"Error fetching officers data for {symbol}: {e}\n{traceback.format_exc()}"
             log_error(err_file_path, error_message)
             print(error_message)
+    if df.empty:
+        error_message = "No officers data collected."
+        log_error(err_file_path, error_message)
+        print(error_message)
+        return None
+
+    # Convert to Parquet in memory
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, index=False)
+    buffer.seek(0)
+
+    print("Officers data prepared in-memory as Parquet")
+    return buffer
 
 @retry_on_error
 def fetch_shareholders(symbol, err_file_path):
@@ -168,25 +200,40 @@ def fetch_shareholders(symbol, err_file_path):
     company = Company(symbol=symbol)
     return company.shareholders()
 
-def get_shareholders(companies_df, file_path, err_file_path, is_test=True):
-    """Fetch and save shareholders' data."""
+def get_shareholders(companies_df, err_file_path, is_test=True):
+    """Fetch company shareholders and return a BytesIO parquet buffer."""
     print('Start collecting shareholders data')
     if is_test:
         companies_df = companies_df.head(10)
+
+    df = pd.DataFrame()
     for symbol in companies_df['symbol']:
         try:
             shareholders = fetch_shareholders(symbol, err_file_path)
-            shareholders_df = pd.DataFrame(shareholders)
-            shareholders_df['symbol'] = symbol
-            cols = ['symbol'] + [col for col in shareholders_df.columns if col != 'symbol']
-            shareholders_df = shareholders_df[cols]
-            write_or_append_csv(shareholders_df, file_path)
-            print(f"Shareholders data for {symbol} successfully written to {file_path}")
+            shareholders['symbol'] = symbol  # Add the symbol column
+            cols = ['symbol'] + [col for col in shareholders.columns if col != 'symbol']  # Reorder columns
+            shareholders = shareholders[cols]
+            df = pd.concat([df, shareholders], ignore_index=True)
+            print(f"Collected shareholders data for {symbol}")
             time.sleep(5)
         except Exception as e:
-            error_message = f"Error fetching shareholders data for {symbol}: {e}"
+            error_message = f"Error fetching shareholders data for {symbol}: {e}\n{traceback.format_exc()}"
             log_error(err_file_path, error_message)
             print(error_message)
+
+    if df.empty:
+        error_message = "No shareholders data collected."
+        log_error(err_file_path, error_message)
+        print(error_message)
+        return None
+
+    # Convert to Parquet in memory
+    buffer = io.BytesIO()
+    df.to_parquet(buffer, index=False)
+    buffer.seek(0)
+
+    print("Shareholders data prepared in-memory as Parquet")
+    return buffer
 
 @retry_on_error
 def fetch_dividends(symbol, err_file_path):
@@ -194,25 +241,56 @@ def fetch_dividends(symbol, err_file_path):
     company = Company(symbol=symbol)
     return company.dividends()
 
-def get_dividends(companies_df, file_path, err_file_path, is_test=True):
-    """Fetch and save dividends data."""
-    print('Start collecting dividends data')
+def get_dividends(companies_df, err_file_path, is_test=True):
+    """Fetch company dividends and return a dict of year -> BytesIO parquet buffer."""
+    print("Start collecting dividends data")
     if is_test:
         companies_df = companies_df.head(10)
+
+    all_dividends = pd.DataFrame()
+
     for symbol in companies_df['symbol']:
         try:
             dividends = fetch_dividends(symbol, err_file_path)
-            dividends_df = pd.DataFrame(dividends)
-            dividends_df['symbol'] = symbol
-            cols = ['symbol'] + [col for col in dividends_df.columns if col != 'symbol']
-            dividends_df = dividends_df[cols]
-            write_or_append_csv(dividends_df, file_path)
-            print(f"Dividends data for {symbol} successfully written to {file_path}")
+            dividends['symbol'] = symbol
+            cols = ['symbol'] + [col for col in dividends.columns if col != 'symbol']
+            dividends = dividends[cols]
+            if 'exercise_date' not in dividends:
+                log_error(err_file_path, f"exercise_date not found in dividends for {symbol}")
+                continue
+
+            dividends['exercise_date'] = pd.to_datetime(dividends['exercise_date'], errors='coerce')
+            dividends.dropna(subset=['exercise_date'], inplace=True)
+            dividends['year'] = dividends['exercise_date'].dt.year
+
+            all_dividends = pd.concat([all_dividends, dividends], ignore_index=True)
+            # print(dividends.head())
+            print(f"Collected dividends data for {symbol}")
             time.sleep(5)
+
         except Exception as e:
-            error_message = f"Error fetching dividends data for {symbol}: {e}"
+            error_message = f"Error fetching dividends data for {symbol}: {e}\n{traceback.format_exc()}"
             log_error(err_file_path, error_message)
             print(error_message)
+
+    if all_dividends.empty:
+        error_message = "No dividends data collected."
+        log_error(err_file_path, error_message)
+        print(error_message)
+        return None
+
+    buffers = {}
+    for (symbol, year), group in all_dividends.groupby(['symbol', 'year']):
+        group = group.drop(columns='year')
+        # print(group.head())
+        buffer = io.BytesIO()
+        group.to_parquet(buffer, index=False)
+        buffer.seek(0)
+        buffers[(symbol, year)] = buffer
+        
+    print("Dividends data prepared in-memory as Parquet")
+    return buffers
+
 
 @retry_on_error
 def fetch_stock_quote_history(symbol, start_date, end_date, err_file_path):
@@ -221,76 +299,158 @@ def fetch_stock_quote_history(symbol, start_date, end_date, err_file_path):
     quote_history = stock.quote.history(start=start_date, end=end_date)
     return pd.DataFrame(quote_history)
 
-
-def get_stock_quote_history(companies_df, file_path, err_file_path, start_date="2020-01-01", end_date=None, is_test=True):
-    """Fetch and save stock quote history data."""
+def get_stock_quote_history(companies_df, err_file_path, start_date="2020-01-01", end_date=None, is_test=True):
+    """Fetch and return stock quote history data grouped by symbol and year."""
     print('Start collecting stock quote history data')
     if end_date is None:
         end_date = datetime.today().strftime("%Y-%m-%d")
     if is_test:
-        companies_df = companies_df.head(3)
+        companies_df = companies_df.head(10)
+
+    all_quotes = pd.DataFrame()
+
     for symbol in companies_df['symbol']:
         try:
+            # Fetch stock quote history for the symbol
             quote_history_df = fetch_stock_quote_history(symbol, start_date, end_date, err_file_path)
             quote_history_df['symbol'] = symbol
             cols = ['symbol'] + [col for col in quote_history_df.columns if col != 'symbol']
             quote_history_df = quote_history_df[cols]
-            write_or_append_csv(quote_history_df, file_path)
-            print(f"Stock quote history for {symbol} successfully written to {file_path}")
-            time.sleep(15)
+            
+            # Extract year from the date column
+            if 'time' in quote_history_df.columns:
+                quote_history_df['time'] = pd.to_datetime(quote_history_df['time'], errors='coerce')
+                quote_history_df.dropna(subset=['time'], inplace=True)
+                quote_history_df['year'] = quote_history_df['time'].dt.year
+            else:
+                print(f"No 'date' column found for symbol {symbol}. Skipping.")
+                continue
+
+            all_quotes = pd.concat([all_quotes, quote_history_df], ignore_index=True)
+            print(f"Collected stock quote history for {symbol}")
+            time.sleep(5)
         except Exception as e:
             error_message = f"Error fetching stock quote history for {symbol}: {e}"
             log_error(err_file_path, error_message)
             print(error_message)
 
+    if all_quotes.empty:
+        print("No stock quote history data collected.")
+        return None
+
+    # Group by symbol and year, and prepare buffers
+    buffers = {}
+    for (symbol, year), group in all_quotes.groupby(['symbol', 'year']):
+        group = group.drop(columns='year')  # Drop the year column before saving
+        buffer = io.BytesIO()
+        group.to_parquet(buffer, index=False)
+        buffer.seek(0)
+        buffers[(symbol, year)] = buffer
+        
+    print("Stock qoute data prepared in-memory as Parquet")
+    return buffers
 
 @retry_on_error
-def fetch_with_retry(fetch_func, symbol, period, lang, err_file_path):
-    """Retry fetching data with exponential backoff."""
+def fetch_with_retry(named_fetch_funcs, symbol, period, lang, err_file_path):
+    """
+    Retry fetching data with exponential backoff and run multiple fetch functions concurrently.
+    Each function is a tuple: (name, function)
+    """
     stock = Vnstock().stock(symbol=symbol, source='VCI')
-    return fetch_func(stock, period=period, lang=lang)
 
-def get_financial_data(func_fetch, companies_df, file_path, err_file_path, period_type="quarter", is_test=True):
+    # Define a wrapper to execute each fetch function
+    def execute_fetch(fetch_func):
+        return fetch_func(stock, period=period, lang=lang)
+
+    # Run all fetch functions concurrently
+    results = {}
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_to_name = {
+            executor.submit(execute_fetch, fetch_func): name
+            for name, fetch_func in named_fetch_funcs
+        }
+        for future in future_to_name:
+            name = future_to_name[future]
+            try:
+                results[name] = future.result()
+            except Exception as e:
+                error_message = f"Error fetching data for {symbol} using {name}: {e}"
+                log_error(err_file_path, error_message)
+                print(error_message)
+                results[name] = None
+
+    return results
+
+
+def get_financial_data(companies_df, err_file_path, period_type="quarter", is_test=True):
     """
-    Generalized function to fetch and save financial data (income statement, balance sheet,
-    cash flow, financial ratio) for a list of companies.
+    Fetch financial data (income statement, balance sheet, cash flow, financial ratio)
+    for a list of companies and return a dictionary of buffers categorized by data_type and symbol.
     """
-    print(f"Start collecting financial data using {func_fetch.__name__}")
+    print("Start collecting financial data")
     if is_test:
         companies_df = companies_df.head(10)
+
+    # Define fetch functions for each financial data type
+    # Define fetch functions with proper names
+    fetch_funcs = [
+        ("income_statement", lambda stock, period, lang: stock.finance.income_statement(period=period, lang=lang)),
+        ("balance_sheet", lambda stock, period, lang: stock.finance.balance_sheet(period=period, lang=lang)),
+        ("cash_flow", lambda stock, period, lang: stock.finance.cash_flow(period=period, lang=lang)),
+        ("ratio", lambda stock, period, lang: stock.finance.ratio(period=period, lang=lang)),
+    ]
+
+    # Initialize the result dictionary
+    result = {key: {} for key, _ in fetch_funcs}
+
     for symbol in companies_df['symbol']:
         try:
-            # stock = Vnstock().stock(symbol=symbol, source='VCI')
-            data = fetch_with_retry(func_fetch, symbol, period=period_type, lang='vi', err_file_path=err_file_path)
-            df = pd.DataFrame(data)
-            write_or_append_csv(df, file_path)
-            print(f"Financial data for {symbol} successfully written to {file_path}")
-            time.sleep(5)
+            # Fetch all financial data types concurrently for the symbol
+            data = fetch_with_retry(fetch_funcs, 
+                                    symbol, period=period_type, lang='vi', err_file_path=err_file_path)
+
+            for data_type in data.items():
+                if data_type is not None:
+                    buffer = io.BytesIO()
+                    data_type[1].to_parquet(buffer, index=False)
+                    buffer.seek(0)
+                    result[data_type[0]][symbol] = buffer
+
+            print(f"Collected financial data for {symbol}")
+            time.sleep(10)
         except Exception as e:
-            error_message = f"Error fetching financial data for {symbol} using {func_fetch.__name__}: {e}"
+            error_message = f"Error fetching financial data for {symbol}: {e}"
             log_error(err_file_path, error_message)
             print(error_message)
 
-def get_income_statement(companies_df, file_path, err_file_path, quarter=True, is_test=True):
-    """Fetch and save income statement data."""
-    period = 'quarter' if quarter else 'year'
-    get_financial_data(lambda stock, period, lang: stock.finance.income_statement(period=period, lang=lang),
-                       companies_df, file_path, err_file_path, period_type=period, is_test=is_test)
+    print("Finished collecting financial data")
+    print(result)
+    return result
 
-def get_balance_sheet(companies_df, file_path, err_file_path, quarter=True, is_test=True):
-    """Fetch and save balance sheet data."""
+def get_income_statement(companies_df, err_file_path, quarter=True, is_test=True):
+    """Fetch and return income statement data as buffers grouped by symbol and year."""
     period = 'quarter' if quarter else 'year'
-    get_financial_data(lambda stock, period, lang: stock.finance.balance_sheet(period=period, lang=lang),
-                       companies_df, file_path, err_file_path, period_type=period, is_test=is_test)
+    return get_financial_data(
+        companies_df, err_file_path, period_type=period, is_test=is_test
+    )
 
-def get_cash_flow(companies_df, file_path, err_file_path, quarter=True, is_test=True):
-    """Fetch and save cash flow data."""
+def get_balance_sheet(companies_df, err_file_path, quarter=True, is_test=True):
+    """Fetch and return balance sheet data as buffers grouped by symbol and year."""
     period = 'quarter' if quarter else 'year'
-    get_financial_data(lambda stock, period, lang: stock.finance.cash_flow(period=period, lang=lang),
-                       companies_df, file_path, err_file_path, period_type=period, is_test=is_test)
+    return get_financial_data(
+        companies_df, err_file_path, period_type=period, is_test=is_test
+    )
 
-def get_ratio(companies_df, file_path, err_file_path, quarter=True, is_test=True):
-    """Fetch and save financial ratio data."""
+def get_cash_flow(companies_df, err_file_path, quarter=True, is_test=True):
+    """Fetch and return cash flow data as buffers grouped by symbol and year."""
     period = 'quarter' if quarter else 'year'
-    get_financial_data(lambda stock, period, lang: stock.finance.ratio(period=period, lang=lang),
-                       companies_df, file_path, err_file_path, period_type=period, is_test=is_test)
+    return get_financial_data(
+        companies_df, err_file_path, period_type=period, is_test=is_test
+    )
+
+def get_ratio(companies_df, err_file_path, quarter=True, is_test=True):
+    """Fetch and return financial ratio data as buffers grouped by symbol and year."""
+    period = 'quarter' if quarter else 'year'
+    return get_financial_data(
+        companies_df, err_file_path, period_type=period, is_test=is_test
+    )

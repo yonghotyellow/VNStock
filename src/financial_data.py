@@ -1,38 +1,33 @@
 import os
 import pandas as pd
-import argparse
-from data_utils import (
-    get_income_statement,
-    get_balance_sheet,
-    get_cash_flow,
-    get_ratio,
-    get_companies
-)
+from companies import get_companies_df
+from data_utils import get_financial_data
+from gcs_utils import upload_bytes_to_gcs
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Environment variables
 COMPANIES_FILE = os.getenv("COMPANIES_FILE")
-COMPANY_INCOME_STATEMENT_FILE = os.getenv("COMPANY_INCOME_STATEMENT_FILE")
-COMPANY_BALANCE_SHEET_FILE = os.getenv("COMPANY_BALANCE_SHEET_FILE")
-COMPANY_CASH_FLOW_FILE = os.getenv("COMPANY_CASH_FLOW_FILE")
-COMPANY_RATIO_FILE = os.getenv("COMPANY_RATIO_FILE")
 ERROR_LOG_FILE = os.getenv("ERROR_LOG_FILE")
 IS_TEST = os.getenv("IS_TEST", "True").lower() in ("true", "1", "t")
+    
+
 def main(is_test):
-    if not os.path.exists(COMPANIES_FILE):
-        companies_df = get_companies(COMPANIES_FILE, ERROR_LOG_FILE)
+    # Get the companies DataFrame
+    companies_df = get_companies_df()
+
+    # Fetch and upload financial data
+    financial_data = get_financial_data(companies_df, ERROR_LOG_FILE, period_type="quarter", is_test=is_test)
+
+    if financial_data:
+        for data_type, buffers in financial_data.items():
+            for symbol, buffer in buffers.items():
+                file_path = f"raw/{data_type}/{symbol}/{data_type}.parquet"
+                upload_bytes_to_gcs(buffer, file_path)
+        print("Uploaded in-memory Parquet files to GCS successfully.")
     else:
-        companies_df = pd.read_csv(COMPANIES_FILE, encoding="utf-8")
-    
-    # Execute each financial data fetching function
-    get_income_statement(companies_df, COMPANY_INCOME_STATEMENT_FILE, ERROR_LOG_FILE, quarter=True, is_test=is_test)
-    get_balance_sheet(companies_df, COMPANY_BALANCE_SHEET_FILE, ERROR_LOG_FILE, quarter=True, is_test=is_test)
-    get_cash_flow(companies_df, COMPANY_CASH_FLOW_FILE, ERROR_LOG_FILE, quarter=True, is_test=is_test)
-    get_ratio(companies_df, COMPANY_RATIO_FILE, ERROR_LOG_FILE, quarter=True, is_test=is_test)
-    
-    print("Financial data fetched and stored.")
+        print("Failed to fetch financial data.")
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser(description="Run the Financial Data Service pipeline.")

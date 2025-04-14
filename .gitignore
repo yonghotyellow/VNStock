@@ -1,6 +1,5 @@
 *.csv
 *.json
-.env
 data/
 logs/
 src/__pycache__/
