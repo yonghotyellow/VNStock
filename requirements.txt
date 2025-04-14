@@ -1,3 +1,6 @@
 pandas
 vnstock==3.2.3
 python-dotenv
+google-cloud-storage
+pyarrow
+fastparquet

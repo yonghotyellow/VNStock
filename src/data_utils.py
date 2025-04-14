@@ -124,7 +124,7 @@ def get_company_info(companies_df, err_file_path, is_test=True):
     """Fetch company info and return a BytesIO parquet buffer."""
     print('Start collecting company info')
     if is_test:
-        companies_df = companies_df.head(10)
+        companies_df = companies_df.head(3)
 
     company_infos = []
     for symbol in companies_df['symbol']:
@@ -163,36 +163,29 @@ def get_officers(companies_df, err_file_path, is_test=True):
     """Fetch company officers and return a BytesIO parquet buffer."""
     print('Start collecting officers data')
     if is_test:
-        companies_df = companies_df.head(1)
+        companies_df = companies_df.head(10)
 
-    officers_data = []
+    df = pd.DataFrame()
     for symbol in companies_df['symbol']:
         try:
             officers = fetch_officers(symbol, err_file_path)
-            cleaned_officers = []
-            for officer in officers:
-                if isinstance(officer, dict):
-                    officer_with_symbol = {'symbol': symbol, **officer}
-                    cleaned_officers.append(officer_with_symbol)
-                    print(officer_with_symbol)
-            officers_data.extend(cleaned_officers)
+            officers['symbol'] = symbol  # Add the symbol column
+            cols = ['symbol'] + [col for col in officers.columns if col != 'symbol']  # Reorder columns
+            officers = officers[cols]
+            df = pd.concat([df, officers], ignore_index=True)
             print(f"Collected officers data for {symbol}")
             time.sleep(5)
         except Exception as e:
             error_message = f"Error fetching officers data for {symbol}: {e}\n{traceback.format_exc()}"
             log_error(err_file_path, error_message)
             print(error_message)
-    print(f"Final officers_data: {officers_data}")
-    if not officers_data:
+    if df.empty:
         error_message = "No officers data collected."
         log_error(err_file_path, error_message)
         print(error_message)
         return None
 
     # Convert to Parquet in memory
-    df = pd.DataFrame(officers_data)
-    cols = ['symbol'] + [col for col in df.columns if col != 'symbol']  # Reorder columns
-    df = df[cols]
     buffer = io.BytesIO()
     df.to_parquet(buffer, index=False)
     buffer.seek(0)
@@ -212,13 +205,14 @@ def get_shareholders(companies_df, err_file_path, is_test=True):
     if is_test:
         companies_df = companies_df.head(10)
 
-    shareholders_data = []
+    df = pd.DataFrame()
     for symbol in companies_df['symbol']:
         try:
             shareholders = fetch_shareholders(symbol, err_file_path)
-            for shareholder in shareholders:
-                shareholder['symbol'] = symbol  # Add the symbol to each shareholder's data
-            shareholders_data.extend(shareholders)
+            shareholders['symbol'] = symbol  # Add the symbol column
+            cols = ['symbol'] + [col for col in shareholders.columns if col != 'symbol']  # Reorder columns
+            shareholders = shareholders[cols]
+            df = pd.concat([df, shareholders], ignore_index=True)
             print(f"Collected shareholders data for {symbol}")
             time.sleep(5)
         except Exception as e:
@@ -226,16 +220,13 @@ def get_shareholders(companies_df, err_file_path, is_test=True):
             log_error(err_file_path, error_message)
             print(error_message)
 
-    if not shareholders_data:
+    if df.empty:
         error_message = "No shareholders data collected."
         log_error(err_file_path, error_message)
         print(error_message)
         return None
 
     # Convert to Parquet in memory
-    df = pd.DataFrame(shareholders_data)
-    cols = ['symbol'] + [col for col in df.columns if col != 'symbol']  # Reorder columns
-    df = df[cols]
     buffer = io.BytesIO()
     df.to_parquet(buffer, index=False)
     buffer.seek(0)
@@ -249,25 +240,56 @@ def fetch_dividends(symbol, err_file_path):
     company = Company(symbol=symbol)
     return company.dividends()
 
-def get_dividends(companies_df, file_path, err_file_path, is_test=True):
-    """Fetch and save dividends data."""
-    print('Start collecting dividends data')
+def get_dividends(companies_df, err_file_path, is_test=True):
+    """Fetch company dividends and return a dict of year -> BytesIO parquet buffer."""
+    print("Start collecting dividends data")
     if is_test:
         companies_df = companies_df.head(10)
+
+    all_dividends = pd.DataFrame()
+
     for symbol in companies_df['symbol']:
         try:
             dividends = fetch_dividends(symbol, err_file_path)
-            dividends_df = pd.DataFrame(dividends)
-            dividends_df['symbol'] = symbol
-            cols = ['symbol'] + [col for col in dividends_df.columns if col != 'symbol']
-            dividends_df = dividends_df[cols]
-            write_or_append_csv(dividends_df, file_path)
-            print(f"Dividends data for {symbol} successfully written to {file_path}")
+            dividends['symbol'] = symbol
+            cols = ['symbol'] + [col for col in dividends.columns if col != 'symbol']
+            dividends = dividends[cols]
+            if 'exercise_date' not in dividends:
+                log_error(err_file_path, f"exercise_date not found in dividends for {symbol}")
+                continue
+
+            dividends['exercise_date'] = pd.to_datetime(dividends['exercise_date'], errors='coerce')
+            dividends.dropna(subset=['exercise_date'], inplace=True)
+            dividends['year'] = dividends['exercise_date'].dt.year
+
+            all_dividends = pd.concat([all_dividends, dividends], ignore_index=True)
+            # print(dividends.head())
+            print(f"Collected dividends data for {symbol}")
             time.sleep(5)
+
         except Exception as e:
-            error_message = f"Error fetching dividends data for {symbol}: {e}"
+            error_message = f"Error fetching dividends data for {symbol}: {e}\n{traceback.format_exc()}"
             log_error(err_file_path, error_message)
             print(error_message)
+
+    if all_dividends.empty:
+        error_message = "No dividends data collected."
+        log_error(err_file_path, error_message)
+        print(error_message)
+        return None
+
+    buffers = {}
+    for year, group in all_dividends.groupby('year'):
+        group = group.drop(columns='year')
+        # print(group.head())
+        buffer = io.BytesIO()
+        group.to_parquet(buffer, index=False)
+        buffer.seek(0)
+        buffers[year] = buffer
+        # print(buffer)
+
+    return buffers
+
 
 @retry_on_error
 def fetch_stock_quote_history(symbol, start_date, end_date, err_file_path):
