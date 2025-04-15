@@ -1,7 +1,7 @@
 import os
 from companies import get_companies_df
-from data_crawler.ultis.data_utils import get_financial_data
-from data_crawler.ultis.gcs_utils import upload_bytes_to_gcs
+from ultis.data_utils import get_financial_data
+from ultis.gcs_utils import upload_bytes_to_gcs
 from dotenv import load_dotenv
 
 load_dotenv()
