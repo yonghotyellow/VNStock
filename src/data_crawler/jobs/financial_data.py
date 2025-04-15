@@ -1,14 +1,12 @@
 import os
-import pandas as pd
 from companies import get_companies_df
-from data_utils import get_financial_data
-from gcs_utils import upload_bytes_to_gcs
+from data_crawler.ultis.data_utils import get_financial_data
+from data_crawler.ultis.gcs_utils import upload_bytes_to_gcs
 from dotenv import load_dotenv
 
 load_dotenv()
 
 # Environment variables
-COMPANIES_FILE = os.getenv("COMPANIES_FILE")
 ERROR_LOG_FILE = os.getenv("ERROR_LOG_FILE")
 IS_TEST = os.getenv("IS_TEST", "True").lower() in ("true", "1", "t")
     

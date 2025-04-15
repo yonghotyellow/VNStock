@@ -1,6 +1,6 @@
 import os
-from data_utils import get_dividends
-from gcs_utils import upload_bytes_to_gcs
+from data_crawler.ultis.data_utils import get_dividends
+from data_crawler.ultis.gcs_utils import upload_bytes_to_gcs
 from companies import get_companies_df
 from dotenv import load_dotenv
 

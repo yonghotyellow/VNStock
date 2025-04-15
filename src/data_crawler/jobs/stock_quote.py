@@ -1,8 +1,8 @@
 import os
 from datetime import datetime
-from data_utils import get_stock_quote_history
+from data_crawler.ultis.data_utils import get_stock_quote_history
 from companies import get_companies_df
-from gcs_utils import upload_bytes_to_gcs
+from data_crawler.ultis.gcs_utils import upload_bytes_to_gcs
 from dotenv import load_dotenv
 
 load_dotenv()

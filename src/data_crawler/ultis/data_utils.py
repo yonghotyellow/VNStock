@@ -3,7 +3,6 @@ import time
 import json
 import pandas as pd
 from vnstock import Vnstock, Company
-from gcs_utils import upload_to_gcs
 from datetime import datetime
 from functools import wraps
 import re
