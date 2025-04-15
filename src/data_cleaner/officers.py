@@ -1,5 +1,5 @@
-from ultis.gcs_utils import upload_bytes_to_gcs, load_parquet_from_gcs
-from ultis.spark_session import get_spark
+from utils.gcs_utils import upload_bytes_to_gcs, load_parquet_from_gcs
+from utils.spark_session import get_spark
 
 
 if __name__ == "__main__":

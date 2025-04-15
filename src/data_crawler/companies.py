@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
-from ultis.data_utils import get_companies
-from ultis.gcs_utils import upload_bytes_to_gcs, load_parquet_from_gcs
+from utils.data_utils import get_companies
+from utils.gcs_utils import upload_bytes_to_gcs, load_parquet_from_gcs
 
 load_dotenv()
 

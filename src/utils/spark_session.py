@@ -4,6 +4,7 @@ def get_spark(app_name="DataCleaner"):
     return (
         SparkSession.builder
         .appName(app_name)
+        .master("local[*]")
         .getOrCreate()
     )
 
