@@ -4,3 +4,4 @@ python-dotenv
 google-cloud-storage
 pyarrow
 fastparquet
+pyspark

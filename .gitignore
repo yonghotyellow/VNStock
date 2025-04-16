@@ -2,5 +2,5 @@
 *.json
 data/
 logs/
-src/__pycache__/
+__pycache__/
 src/test.py

@@ -1,6 +1,6 @@
 import os
 from data_utils import get_dividends
-from gcs_utils import upload_bytes_to_gcs
+from gcs_utils import upload_bytes_to_gcs, get_gcs_client
 from companies import get_companies_df
 from dotenv import load_dotenv
 
@@ -17,9 +17,10 @@ def main(is_test):
     buffers = get_dividends(companies_df, ERROR_LOG_FILE, is_test)
 
     if buffers:
+        client = get_gcs_client()
         for (symbol, year), buffer in buffers.items():
             file_path = f"raw/dividends/{symbol}/dividends_{year}.parquet"
-            upload_bytes_to_gcs(buffer, file_path)
+            upload_bytes_to_gcs(buffer, file_path, client=client)
         print("Uploaded in-memory Parquet files to GCS successfully.")
     else:
         print("Failed to fetch any dividends data.")
