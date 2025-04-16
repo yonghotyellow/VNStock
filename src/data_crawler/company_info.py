@@ -1,6 +1,6 @@
 import os
-from utils.data_utils import get_company_info
-from utils.gcs_utils import upload_bytes_to_gcs
+from data_utils import get_company_info
+from gcs_utils import upload_bytes_to_gcs, get_gcs_client
 from companies import get_companies_df
 from dotenv import load_dotenv
 
@@ -15,7 +15,8 @@ def main(is_test):
 
     parquet_buffer = get_company_info(companies_df, ERROR_LOG_FILE, is_test)
     if parquet_buffer:
-        upload_bytes_to_gcs(parquet_buffer, "raw/company_info/company_info.parquet")
+        client = get_gcs_client()
+        upload_bytes_to_gcs(parquet_buffer, "raw/company_info/company_info.parquet", client=client)
 
 if __name__ == "__main__":
     # parser = argparse.ArgumentParser(description="Run the Company Info Service pipeline.")

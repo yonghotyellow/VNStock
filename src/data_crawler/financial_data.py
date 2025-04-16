@@ -1,7 +1,7 @@
 import os
 from companies import get_companies_df
-from utils.data_utils import get_financial_data
-from utils.gcs_utils import upload_bytes_to_gcs
+from data_utils import get_financial_data
+from gcs_utils import upload_bytes_to_gcs, get_gcs_client
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,10 +19,11 @@ def main(is_test):
     financial_data = get_financial_data(companies_df, ERROR_LOG_FILE, period_type="quarter", is_test=is_test)
 
     if financial_data:
+        client = get_gcs_client()
         for data_type, buffers in financial_data.items():
             for symbol, buffer in buffers.items():
                 file_path = f"raw/{data_type}/{symbol}/{data_type}.parquet"
-                upload_bytes_to_gcs(buffer, file_path)
+                upload_bytes_to_gcs(buffer, file_path, client=client)
         print("Uploaded in-memory Parquet files to GCS successfully.")
     else:
         print("Failed to fetch financial data.")

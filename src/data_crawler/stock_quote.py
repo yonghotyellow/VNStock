@@ -1,8 +1,8 @@
 import os
 from datetime import datetime
-from utils.data_utils import get_stock_quote_history
-from data_crawler.companies import get_companies_df
-from utils.gcs_utils import upload_bytes_to_gcs
+from data_utils import get_stock_quote_history
+from companies import get_companies_df
+from gcs_utils import upload_bytes_to_gcs, get_gcs_client
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -22,9 +22,10 @@ def main(is_test):
     buffers = get_stock_quote_history(companies_df, ERROR_LOG_FILE, start_date="2020-01-01", end_date=end_date, is_test=is_test)
 
     if buffers:
+        client = get_gcs_client()
         for (symbol, year), buffer in buffers.items():
             file_path = f"raw/stock_quote/{symbol}/stock_quote_{year}.parquet"
-            upload_bytes_to_gcs(buffer, file_path)
+            upload_bytes_to_gcs(buffer, file_path, client=client)
         print("Uploaded in-memory Parquet files to GCS successfully.")
     else:
         print("Failed to fetch any stock quote history data.")
