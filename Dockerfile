@@ -7,12 +7,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Set the working directory
 WORKDIR /app
 
-RUN mkdir -p logs 
-RUN touch logs/error.txt
+RUN mkdir -p logs && touch logs/error.txt
 
 # Copy source code and environment file
 COPY src/ ./src
 COPY .env .
+COPY gcs_credentials.json .
 
 # Default CMD can be overridden by docker-compose `command`
 CMD ["/bin/bash"]

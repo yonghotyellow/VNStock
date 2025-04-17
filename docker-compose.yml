@@ -1,6 +1,6 @@
 x-common:
   &common-config
-  image: vnstock:1.1
+  image: vnstock:1.2
   env_file:
     - .env
   environment:
@@ -13,28 +13,28 @@ x-common:
 services:
   company:
     <<: *common-config
-    command: [ "python", "src/companies.py" ]
+    command: [ "python", "src/data_crawler/companies.py" ]
 
   financial-data:
     <<: *common-config
-    command: [ "python", "src/financial_data.py" ]
+    command: [ "python", "src/data_crawler/financial_data.py" ]
 
   company-info:
     <<: *common-config
-    command: [ "python", "src/company_info.py" ]
+    command: [ "python", "src/data_crawler/company_info.py" ]
 
   company-officer:
     <<: *common-config
-    command: [ "python", "src/officers.py" ]
+    command: [ "python", "src/data_crawler/officers.py" ]
 
   company-shareholder:
     <<: *common-config
-    command: [ "python", "src/shareholders.py" ]
+    command: [ "python", "src/data_crawler/shareholders.py" ]
 
   company-dividends:
     <<: *common-config
-    command: [ "python", "src/dividends.py" ]
+    command: [ "python", "src/data_crawler/dividends.py" ]
 
   company-stock-quote:
     <<: *common-config
-    command: [ "python", "src/stock_quote.py" ]
+    command: [ "python", "src/data_crawler/stock_quote.py" ]

@@ -91,3 +91,29 @@ def load_parquet_from_gcs(blob_name, client=None):
 
     df = pd.read_parquet(buffer)
     return df
+
+def list_parquet_files_in_gcs(base_path, client=None):
+    """
+    List all .parquet files in a given GCS path, including files in child folders.
+
+    Parameters:
+        base_path (str): The base path in the GCS bucket to scan (e.g., "raw/dividends").
+        client (google.cloud.storage.Client): Optional pre-initialized GCS client.
+
+    Returns:
+        list: A list of full paths to .parquet files in the specified GCS path.
+    """
+    if not BUCKET_NAME:
+        raise ValueError("❌ GCS_BUCKET not set in environment variables!")
+
+    if client is None:
+        client = get_gcs_client(CREDENTIALS_PATH)
+
+    bucket = client.bucket(BUCKET_NAME)
+    blobs = bucket.list_blobs(prefix=base_path)
+
+    # Collect all .parquet files
+    parquet_files = [blob.name for blob in blobs if blob.name.endswith(".parquet")]
+
+    print(f"📂 Found {len(parquet_files)} .parquet files in gs://{BUCKET_NAME}/{base_path}")
+    return parquet_files
