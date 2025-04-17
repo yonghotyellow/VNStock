@@ -65,7 +65,7 @@ def upload_bytes_to_gcs(byte_buffer, destination_blob_name, credentials_path=Non
     print(f"📤 Uploaded in-memory Parquet to gs://{BUCKET_NAME}/{destination_blob_name}")
 
 
-def load_parquet_from_gcs(blob_name, credentials_path=None, client=None):
+def load_parquet_from_gcs(blob_name, client=None):
     """
     Load a parquet file from GCS directly into a pandas DataFrame.
 
@@ -80,8 +80,8 @@ def load_parquet_from_gcs(blob_name, credentials_path=None, client=None):
         raise ValueError("❌ GCS_BUCKET not set in environment variables!")
 
     if client is None:
-        client = get_gcs_client(credentials_path or CREDENTIALS_PATH)
-        
+        client = get_gcs_client(CREDENTIALS_PATH)
+
     bucket = client.bucket(BUCKET_NAME)
     blob = bucket.blob(blob_name)
 
