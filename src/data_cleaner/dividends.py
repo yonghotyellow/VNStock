@@ -18,9 +18,9 @@ if __name__ == "__main__":
     count = 0
     for file in parquet_files:
         try:
-            count += 1
-            if count == 50:
-                break
+            # count += 1
+            # if count == 50:
+            #     break
             # Load Parquet file from GCS into a Pandas DataFrame
             pandas_df = load_parquet_from_gcs(file, client=client)
 

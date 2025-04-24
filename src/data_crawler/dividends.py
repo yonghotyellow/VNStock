@@ -18,8 +18,8 @@ def main(is_test):
 
     if buffers:
         client = get_gcs_client()
-        for (symbol, year), buffer in buffers.items():
-            file_path = f"raw/dividends/{symbol}/dividends_{year}.parquet"
+        for symbol, buffer in buffers.items():
+            file_path = f"raw/dividends/{symbol}/dividends.parquet"
             upload_bytes_to_gcs(buffer, file_path, client=client)
         print("Uploaded in-memory Parquet files to GCS successfully.")
     else:

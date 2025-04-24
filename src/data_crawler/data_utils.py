@@ -258,10 +258,6 @@ def get_dividends(companies_df, err_file_path, is_test=True):
                 log_error(err_file_path, f"exercise_date not found in dividends for {symbol}")
                 continue
 
-            dividends['exercise_date'] = pd.to_datetime(dividends['exercise_date'], errors='coerce')
-            dividends.dropna(subset=['exercise_date'], inplace=True)
-            dividends['year'] = dividends['exercise_date'].dt.year
-
             all_dividends = pd.concat([all_dividends, dividends], ignore_index=True)
             # print(dividends.head())
             print(f"Collected dividends data for {symbol}")
@@ -279,13 +275,13 @@ def get_dividends(companies_df, err_file_path, is_test=True):
         return None
 
     buffers = {}
-    for (symbol, year), group in all_dividends.groupby(['symbol', 'year']):
-        group = group.drop(columns='year')
+    for symbol, group in all_dividends.groupby('symbol'):
+        # group = group.drop(columns='year')
         # print(group.head())
         buffer = io.BytesIO()
         group.to_parquet(buffer, index=False)
         buffer.seek(0)
-        buffers[(symbol, year)] = buffer
+        buffers[symbol] = buffer
         
     print("Dividends data prepared in-memory as Parquet")
     return buffers
